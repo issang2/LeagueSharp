@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -38,6 +38,8 @@ namespace Viktor
         {
             // Register events
             CustomEvents.Game.OnGameLoad += Game_OnGameLoad;
+            Game.PrintChat("park's Viktor. enjoy it ! ");
+
         }
 
         private static void Game_OnGameLoad(EventArgs args)
@@ -85,6 +87,7 @@ namespace Viktor
         {
             bool useQ = boolLinks["comboUseQ"].Value && Q.IsReady();
             bool useE = boolLinks["comboUseE"].Value && E.IsReady();
+            bool useR = boolLinks["comboUseR"].Value && R.IsReady();
             bool useIgnite = boolLinks["comboUseIgnite"].Value;
             bool longRange = keyLinks["comboExtend"].Value.Active;
 
@@ -101,6 +104,12 @@ namespace Viktor
                 if (target != null)
                     PredictCastE(target, longRange);
             }
+            if (useR)
+            {
+                var target = TargetSelector.GetTarget(R.Range, TargetSelector.DamageType.Magical);
+                if (target != null)
+                    R.Cast(target);
+            }
         }
 
         private static void OnHarass()
@@ -116,6 +125,15 @@ namespace Viktor
                 var target = TargetSelector.GetTarget(maxRangeE, TargetSelector.DamageType.Magical);
                 if (target != null)
                     PredictCastE(target, true);
+            }
+
+            bool useQ = boolLinks["harassUseQ"].Value && Q.IsReady();
+            
+            if (useQ)
+            {
+                var target = TargetSelector.GetTarget(Q.Range, TargetSelector.DamageType.Magical);
+                if (target != null)
+                    Q.Cast(target);
             }
         }
 
@@ -326,7 +344,7 @@ namespace Viktor
                 prediction = E.GetPrediction(target);
 
                 // Cast the E
-                if (prediction.Hitchance == HitChance.High)
+                if (prediction.Hitchance == HitChance.VeryHigh)
                     CastE(pos1, prediction.CastPosition);
 
                 // Reset spell
@@ -349,13 +367,13 @@ namespace Viktor
 
         private static void Interrupter_OnPossibleToInterrupt(Obj_AI_Base unit, InterruptableSpell spell)
         {
-            if (boolLinks["miscInterrupt"].Value && spell.DangerLevel == InterruptableDangerLevel.High && R.InRange(unit.ServerPosition))
+            if (boolLinks["miscInterrupt"].Value && spell.DangerLevel == InterruptableDangerLevel.High && R.IsInRange(unit.ServerPosition))
                 R.Cast(unit.ServerPosition.To2D(), true);
         }
 
         private static void AntiGapcloser_OnEnemyGapcloser(ActiveGapcloser gapcloser)
         {
-            if (boolLinks["miscGapcloser"].Value && W.InRange(gapcloser.End))
+            if (boolLinks["miscGapcloser"].Value && W.IsInRange(gapcloser.End))
                 W.Cast(gapcloser.End.To2D(), true);
         }
 
@@ -365,7 +383,7 @@ namespace Viktor
             foreach (var circle in circleLinks.Values.Select(link => link.Value))
             {
                 if (circle.Active)
-                    Utility.DrawCircle(player.Position, circle.Radius, circle.Color);
+                    Render.Circle.DrawCircle(player.Position, circle.Radius, circle.Color);
             }
         }
 
@@ -383,12 +401,13 @@ namespace Viktor
 
         private static void SetupMenu()
         {
-            menu = new MenuWrapper("[Hellsing] " + CHAMP_NAME);
+            menu = new MenuWrapper("[Park's] " + CHAMP_NAME);
 
             // Combo
             var subMenu = menu.MainMenu.AddSubMenu("Combo");
             ProcessLink("comboUseQ", subMenu.AddLinkedBool("Use Q"));
             ProcessLink("comboUseE", subMenu.AddLinkedBool("Use E"));
+            ProcessLink("comboUseR", subMenu.AddLinkedBool("Use R"));
             ProcessLink("comboUseIgnite", subMenu.AddLinkedBool("Use ignite"));
             ProcessLink("comboActive", subMenu.AddLinkedKeyBind("Combo active", 32, KeyBindType.Press));
             ProcessLink("comboExtend", subMenu.AddLinkedKeyBind("E extended range", 'A', KeyBindType.Press));
@@ -396,8 +415,9 @@ namespace Viktor
             // Harass
             subMenu = menu.MainMenu.AddSubMenu("Harass");
             ProcessLink("harassUseE", subMenu.AddLinkedBool("Use E"));
-            ProcessLink("harassMana", subMenu.AddLinkedSlider("Mana usage in percent (%)", 30));
-            ProcessLink("harassActive", subMenu.AddLinkedKeyBind("Harass active", 'C', KeyBindType.Press));
+            ProcessLink("harassUseQ", subMenu.AddLinkedBool("Use Q"));
+            ProcessLink("harassMana", subMenu.AddLinkedSlider("Mana usage in percent (%)", 40));
+            ProcessLink("harassActive", subMenu.AddLinkedKeyBind("Harass active", 'Z', KeyBindType.Press));
 
             // WaveClear
             subMenu = menu.MainMenu.AddSubMenu("WaveClear");
@@ -408,8 +428,8 @@ namespace Viktor
             ProcessLink("waveActive", subMenu.AddLinkedKeyBind("WaveClear active", 'V', KeyBindType.Press));
 
             // Misc
-            subMenu = menu.MainMenu.AddSubMenu("Misc");
-            ProcessLink("miscInterrupt", subMenu.AddLinkedBool("Use R to interrupt dangerous spells"));
+            subMenu = menu.MainMenu.AddSubMenu("Other");
+            ProcessLink("miscInterrupt", subMenu.AddLinkedBool("Use R to interrupt dangerous spells ex(Feddlestick's R)"));
             ProcessLink("miscGapcloser", subMenu.AddLinkedBool("Use W against gapclosers"));
 
             // Drawings
